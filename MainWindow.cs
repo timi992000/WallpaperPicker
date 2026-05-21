@@ -16,12 +16,14 @@ class MainWindow : Window
     private readonly Button _favBtn;
     private readonly TextBlock _statusText;
     private readonly ComboBox _langCombo;
+    private readonly ComboBox _countCombo;
     private string? _selectedHighResUrl;
     private (string Key, string Arg) _status = ("ready", "");
 
     public MainWindow()
     {
         FavoritesManager.Load();
+        SettingsManager.Load();
 
         var sysLang = CultureInfo.CurrentUICulture.TwoLetterISOLanguageName;
         L.Current = Array.IndexOf(L.Codes, sysLang) >= 0 ? sysLang : "en";
@@ -52,11 +54,30 @@ class MainWindow : Window
             }
         };
 
+        var countOptions = new[] { 3, 6, 9, 12, 15, 18 };
+        _countCombo = new ComboBox
+        {
+            ItemsSource = countOptions,
+            SelectedItem = countOptions.Contains(SettingsManager.ImageCount) ? SettingsManager.ImageCount : 9,
+            Margin = new Thickness(5),
+            VerticalAlignment = VerticalAlignment.Center,
+            Width = 60,
+        };
+        _countCombo.SelectionChanged += async (_, _) =>
+        {
+            if (_countCombo.SelectedItem is int count)
+            {
+                SettingsManager.SetImageCount(count);
+                await LoadRandomImages();
+            }
+        };
+
         var topBar = new DockPanel { Margin = new Thickness(10), Background = Brushes.Black };
         DockPanel.SetDock(_refreshBtn,      Dock.Left);  topBar.Children.Add(_refreshBtn);
         DockPanel.SetDock(_setWallpaperBtn, Dock.Left);  topBar.Children.Add(_setWallpaperBtn);
         DockPanel.SetDock(_favBtn,          Dock.Left);  topBar.Children.Add(_favBtn);
-        DockPanel.SetDock(_langCombo,       Dock.Right); topBar.Children.Add(_langCombo);
+        DockPanel.SetDock(_langCombo,  Dock.Right); topBar.Children.Add(_langCombo);
+        DockPanel.SetDock(_countCombo, Dock.Right); topBar.Children.Add(_countCombo);
         topBar.Children.Add(_statusText);
 
         _imageGrid = new WrapPanel { Orientation = Orientation.Horizontal, HorizontalAlignment = HorizontalAlignment.Center, Margin = new Thickness(10) };
@@ -100,9 +121,10 @@ class MainWindow : Window
         _setWallpaperBtn.IsEnabled = false;
         _selectedHighResUrl        = null;
         _imageGrid.Children.Clear();
-        SetStatus("loading");
+        var count = SettingsManager.ImageCount;
+        SetStatus("loading", count.ToString());
 
-        await Task.WhenAll(Enumerable.Range(0, 9).Select(async _ =>
+        await Task.WhenAll(Enumerable.Range(0, count).Select(async _ =>
         {
             var seed       = Guid.NewGuid().ToString();
             var previewUrl = $"https://picsum.photos/seed/{seed}/300/200";
