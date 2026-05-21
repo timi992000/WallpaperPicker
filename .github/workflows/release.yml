@@ -12,6 +12,12 @@ jobs:
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v4
+      - name: Free disk space
+        run: |
+          sudo rm -rf /Library/Developer/CoreSimulator
+          sudo rm -rf ~/Library/Developer/Xcode/DerivedData
+          brew cleanup --prune=all
+          df -h
       - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: '10.x'
